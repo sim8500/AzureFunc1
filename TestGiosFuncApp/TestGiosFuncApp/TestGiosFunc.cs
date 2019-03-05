@@ -43,6 +43,8 @@ namespace TestGiosFuncApp
                     if(giosDataSource.Values.Any())
                     {
                         log.Info($"Received {giosDataSource.Values.Count} entries from external server.");
+                        log.Info($"Last entry is from {giosDataSource.Values.First().Date.ToString("o")}");
+
                         await MergeGiosDataWithFileStorage(giosDataSource, log);
                     }
                 }
