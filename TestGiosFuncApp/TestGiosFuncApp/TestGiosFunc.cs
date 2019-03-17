@@ -7,11 +7,46 @@ using Microsoft.WindowsAzure.Storage;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace TestGiosFuncApp
 {
     public static class TestGiosFunc
     {
+        public class CustomEvent
+        {
+            /// <summary>
+            /// Gets the unique identifier for the event.
+            /// </summary>
+            public string Id { get; }
+
+            /// <summary>
+            /// Gets the publisher defined path to the event subject.
+            /// </summary>
+            public string Subject { get; set; }
+
+            /// <summary>
+            /// Gets the registered event type for this event source.
+            /// </summary>
+            public string EventType { get; }
+
+            /// <summary>
+            /// Gets the time the event is generated based on the provider's UTC time.
+            /// </summary>
+            public string EventTime { get; }
+
+
+            /// <summary>
+            /// Constructor.
+            /// </summary>
+            public CustomEvent()
+            {
+                Id = Guid.NewGuid().ToString();
+                EventType = "eventGridEvent";
+                EventTime = DateTime.UtcNow.ToString("o");
+            }
+        }
+
         class PMDataEntry
         {
             public DateTime Date { get; set; }
@@ -46,6 +81,7 @@ namespace TestGiosFuncApp
                         log.Info($"Last entry is from {giosDataSource.Values.First().Date.ToString("o")}");
 
                         await MergeGiosDataWithFileStorage(giosDataSource, log);
+                        await SendEventToTheGrid(log);
                     }
                 }
             }
@@ -64,11 +100,11 @@ namespace TestGiosFuncApp
                     var giosDir = share.GetRootDirectoryReference().GetDirectoryReference(Environment.GetEnvironmentVariable("AzureDir"));
                     var fileRef = giosDir.GetFileReference(Environment.GetEnvironmentVariable("AzureOutputFile"));
                     var fileDataSrc = JsonConvert.DeserializeObject<PMDataSource>(await fileRef.DownloadTextAsync());
-                    if(fileDataSrc != null && fileDataSrc.Values.Any())
+                    if (fileDataSrc != null && fileDataSrc.Values.Any())
                     {
-                        foreach(var fdv in fileDataSrc.Values)
+                        foreach (var fdv in fileDataSrc.Values)
                         {
-                            if(!giosDataSource.Values.Any(x => x.Date.Equals(fdv.Date)))
+                            if (!giosDataSource.Values.Any(x => x.Date.Equals(fdv.Date)))
                             {
                                 giosDataSource.Values.Add(fdv);
                             }
@@ -82,6 +118,28 @@ namespace TestGiosFuncApp
             catch (Exception ex)
             {
                 log.Error($"Error occurred: {ex.Message}");
+            }
+        }
+
+        private static async Task SendEventToTheGrid(TraceWriter log)
+        {
+            using (var httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Add("aeg-sas-key", Environment.GetEnvironmentVariable("EventTopicKey"));
+
+                var cev = new CustomEvent();
+                cev.Subject = "test/event";
+
+                var json = JsonConvert.SerializeObject(new List<CustomEvent> { cev });
+
+                // Create request which will be sent to the topic
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                // Send request
+                log.Info("Sending event to Event Grid...");
+                var result = await httpClient.PostAsync(Environment.GetEnvironmentVariable("EventTopicUrl"), content);
+
+                log.Info($"Event sent with result: {result.ReasonPhrase}");
             }
         }
     }
