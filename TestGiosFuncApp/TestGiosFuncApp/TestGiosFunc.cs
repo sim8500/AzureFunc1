@@ -13,6 +13,13 @@ namespace TestGiosFuncApp
 {
     public static class TestGiosFunc
     {
+        public class GiosDataEvent
+        {
+            public string StorageFileName { get; set; }
+
+            public string PlotName { get; set; }
+        }
+
         public class CustomEvent
         {
             /// <summary>
@@ -25,10 +32,6 @@ namespace TestGiosFuncApp
             /// </summary>
             public string Subject { get; set; }
 
-            public string StorageFileName { get; set; }
-
-            public string PlotName { get; set; }
-
             /// <summary>
             /// Gets the registered event type for this event source.
             /// </summary>
@@ -39,14 +42,14 @@ namespace TestGiosFuncApp
             /// </summary>
             public string EventTime { get; }
 
-
+            public GiosDataEvent Data { get; set; }
             /// <summary>
             /// Constructor.
             /// </summary>
             public CustomEvent()
             {
                 Id = Guid.NewGuid().ToString();
-                EventType = "eventGridEvent";
+                EventType = "GiosDataEvent";
                 EventTime = DateTime.UtcNow.ToString("o");
             }
         }
@@ -156,8 +159,7 @@ namespace TestGiosFuncApp
                 var cev = new CustomEvent();
 
                 cev.Subject = "PM-measurement-updated";
-                cev.StorageFileName = storageFile;
-                cev.PlotName = plotName;
+                cev.Data = new GiosDataEvent { StorageFileName = storageFile, PlotName = plotName };
 
                 var json = JsonConvert.SerializeObject(new List<CustomEvent> { cev });
 
