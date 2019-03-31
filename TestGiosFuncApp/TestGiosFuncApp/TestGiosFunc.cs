@@ -25,6 +25,10 @@ namespace TestGiosFuncApp
             /// </summary>
             public string Subject { get; set; }
 
+            public string StorageFileName { get; set; }
+
+            public string PlotName { get; set; }
+
             /// <summary>
             /// Gets the registered event type for this event source.
             /// </summary>
@@ -62,32 +66,54 @@ namespace TestGiosFuncApp
 
 
         [FunctionName("PM10Function")]
-        public static async Task Run([TimerTrigger("0 15 * * * *")]TimerInfo myTimer, TraceWriter log)
+        public static async Task RunPM10([TimerTrigger("0 15 * * * *")]TimerInfo myTimer, TraceWriter log)
         {
             log.Info($"PM10 function executed at: {DateTime.Now}");
+
+            var pm10Url = Environment.GetEnvironmentVariable("PM10Url");
+            var pm10StorageFile = Environment.GetEnvironmentVariable("PM10StorageFile");
+            var pm10PlotName = Environment.GetEnvironmentVariable("PM10PlotName");
+
+            await GetGiosDataAndProcess(pm10Url, pm10StorageFile, pm10PlotName, log);
+        }
+
+        [FunctionName("PM25Function")]
+        public static async Task RunPM25([TimerTrigger("0 16 * * * *")]TimerInfo myTimer, TraceWriter log)
+        {
+            log.Info($"PM2.5 function executed at: {DateTime.Now}");
+
+            var pm25Url = Environment.GetEnvironmentVariable("PM25Url");
+            var pm25StorageFile = Environment.GetEnvironmentVariable("PM25StorageFile");
+            var pm25PlotName = Environment.GetEnvironmentVariable("PM25PlotName");
+
+            await GetGiosDataAndProcess(pm25Url, pm25StorageFile, pm25PlotName, log);
+        }
+
+        private static async Task GetGiosDataAndProcess(string giosUrl, string storageFile, string plotName, TraceWriter log)
+        {
             using (var httpClient = new HttpClient())
             {
                 httpClient.DefaultRequestHeaders.Add("Accepts", "application/json");
 
-                var resp = await httpClient.GetAsync(Environment.GetEnvironmentVariable("PM10Url"));
+                var resp = await httpClient.GetAsync(giosUrl);
 
                 if (resp.IsSuccessStatusCode)
                 {
                     var content = await resp.Content.ReadAsStringAsync();
                     var giosDataSource = JsonConvert.DeserializeObject<PMDataSource>(content);
-                    if(giosDataSource.Values.Any())
+                    if (giosDataSource.Values.Any())
                     {
                         log.Info($"Received {giosDataSource.Values.Count} entries from external server.");
                         log.Info($"Last entry is from {giosDataSource.Values.First().Date.ToString("o")}");
 
-                        await MergeGiosDataWithFileStorage(giosDataSource, log);
-                        await SendEventToTheGrid(log);
+                        await MergeGiosDataWithFileStorage(giosDataSource, storageFile, log);
+                        await SendEventToTheGrid(storageFile, plotName, log);
                     }
                 }
             }
         }
 
-        private static async Task MergeGiosDataWithFileStorage(PMDataSource giosDataSource, TraceWriter log)
+        private static async Task MergeGiosDataWithFileStorage(PMDataSource giosDataSource, string storageFile, TraceWriter log)
         {
             var storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("StorageConnectionString"));
 
@@ -98,7 +124,7 @@ namespace TestGiosFuncApp
                 if (await share.ExistsAsync())
                 {
                     var giosDir = share.GetRootDirectoryReference().GetDirectoryReference(Environment.GetEnvironmentVariable("AzureDir"));
-                    var fileRef = giosDir.GetFileReference(Environment.GetEnvironmentVariable("AzureOutputFile"));
+                    var fileRef = giosDir.GetFileReference(storageFile);
                     var fileDataSrc = JsonConvert.DeserializeObject<PMDataSource>(await fileRef.DownloadTextAsync());
                     if (fileDataSrc != null && fileDataSrc.Values.Any())
                     {
@@ -121,14 +147,17 @@ namespace TestGiosFuncApp
             }
         }
 
-        private static async Task SendEventToTheGrid(TraceWriter log)
+        private static async Task SendEventToTheGrid(string storageFile, string plotName, TraceWriter log)
         {
             using (var httpClient = new HttpClient())
             {
                 httpClient.DefaultRequestHeaders.Add("aeg-sas-key", Environment.GetEnvironmentVariable("EventTopicKey"));
 
                 var cev = new CustomEvent();
-                cev.Subject = "test/event";
+
+                cev.Subject = "PM-measurement-updated";
+                cev.StorageFileName = storageFile;
+                cev.PlotName = plotName;
 
                 var json = JsonConvert.SerializeObject(new List<CustomEvent> { cev });
 
