@@ -4,6 +4,7 @@ using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
@@ -106,9 +107,25 @@ namespace TestGiosFuncApp
                     var giosDataSource = JsonConvert.DeserializeObject<PMDataSource>(content);
                     if (giosDataSource.Values.Any())
                     {
+                        var lastEntry = giosDataSource.Values.First();
                         log.Info($"Received {giosDataSource.Values.Count} entries from external server.");
-                        log.Info($"Last entry is from {giosDataSource.Values.First().Date.ToString("o")}");
+                        log.Info($"Last entry is from {lastEntry.Date.ToString("o")}");
 
+                        if (Double.TryParse(lastEntry.Value, out var res))
+                        {
+                            if(res > 12.50)
+                            {
+                                try
+                                {
+                                    await SendWarningMsgToTheQueue(giosUrl);
+                                }
+                                catch(Exception ex)
+                                {
+                                    log.Error($"Something went wrong: {ex.Message}");
+                                }
+
+                            }
+                        }
                         await MergeGiosDataWithFileStorage(giosDataSource, storageFile, log);
                         await SendEventToTheGrid(storageFile, plotName, log);
                     }
@@ -172,6 +189,15 @@ namespace TestGiosFuncApp
 
                 log.Info($"Event sent with result: {result.ReasonPhrase}");
             }
+        }
+
+        private static async Task SendWarningMsgToTheQueue(string pmUrl)
+        {
+            var storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("StorageConnectionString"));
+            var queueClient = storageAccount.CreateCloudQueueClient();
+            var queueRef = queueClient.GetQueueReference("tst-queue");
+
+            await queueRef.AddMessageAsync(new CloudQueueMessage($"WARNING! Threshold of 12.5 has been exceeded for {pmUrl}"));
         }
     }
 }
