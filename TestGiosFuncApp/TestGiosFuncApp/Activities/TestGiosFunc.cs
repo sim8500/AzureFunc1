@@ -117,7 +117,7 @@ namespace TestGiosFuncApp.Activities
             return new PMDataOutput
             {
                 Name = source.Key,
-                LastUpdateDt = lastEntry?.Date,
+                LastUpdateDt = lastEntry?.Date.ToUniversalTime(),
                 LastUpdateValue = v,
                 AvgValue = avg
             };
