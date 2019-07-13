@@ -40,6 +40,28 @@ namespace TestGiosFuncApp.Activities
             return await GetGiosDataAndProcess(pm25Url, pm25StorageFile, pm25PlotName, log);
         }
 
+        [FunctionName("CheckPMDataOutput")]
+        public static string CheckResult([ActivityTrigger] PMDataOutput result, ILogger log)
+        {
+            if (IsLatestUpdateCorrupted(result))
+            {
+               log.LogError("Latest update of PM data is corrupted - sending warning...");
+
+                return $"There was a problem with updating PM values of {result.Name} at {DateTime.UtcNow}";
+            }
+            else
+            {
+                var lastUpdateThreshold = Double.Parse(Environment.GetEnvironmentVariable("LastUpdateToAvgRatioThreshold"));
+                if(result.LastUpdateValue/result.AvgValue > lastUpdateThreshold)
+                {
+                    log.LogInformation("Threshold for last update value has been exceeded...");
+                    return $"Latest levels of {result.Name} are significantly higher that 24h avg...";
+                }
+
+            }
+            return null;
+        }
+
         [FunctionName("SendWarning")]
         public static async Task SendWarning([ActivityTrigger] string warningText, ILogger log)
         {
@@ -94,6 +116,7 @@ namespace TestGiosFuncApp.Activities
 
             return new PMDataOutput
             {
+                Name = source.Key,
                 LastUpdateDt = lastEntry?.Date,
                 LastUpdateValue = v,
                 AvgValue = avg
@@ -156,6 +179,17 @@ namespace TestGiosFuncApp.Activities
 
                 log.LogTrace($"Event sent with result: {result.ReasonPhrase}");
             }
+        }
+
+        private static bool IsLatestUpdateCorrupted(PMDataOutput updateResult)
+        {
+            var currentDate = DateTime.UtcNow;
+            var threshold = Double.Parse(Environment.GetEnvironmentVariable("UpdateDelayThresholdMinutes"));
+            return (!updateResult.LastUpdateDt.HasValue
+                    || currentDate.Subtract(updateResult.LastUpdateDt.Value)
+                                                     .TotalHours >= threshold
+                    || updateResult.LastUpdateValue == double.NaN                                      
+                    || updateResult.AvgValue == double.NaN);
         }
     }
 }

@@ -2,6 +2,7 @@
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using TestGiosFuncApp.Models;
@@ -23,30 +24,34 @@ namespace TestGiosFuncApp.Orchestrators
             var updateResults = await Task.WhenAll(ctx.CallActivityAsync<PMDataOutput>("PM10Function", "pm10"),
                                                    ctx.CallActivityAsync<PMDataOutput>("PM25Function", "pm25"));
 
-            if (IsLatestUpdateCorrupted(updateResults, currentDate))
-            {
-                if(!ctx.IsReplaying)
-                {
-                    log.LogError("Latest update of PM data is corrupted - sending warning...");
-                }
-
-                await ctx.CallActivityAsync("SendWarning",
-                                $"There was a problem with updating PM values at {currentDate.ToString("o")}");
-            }
-            else if(updateResults.Any(o => o.LastUpdateValue/o.AvgValue > 2.0))
-            {
-                await ctx.CallActivityAsync("SendWarning",
-                                            $"Latest levels PM10/2.5 are significantly higher that 24h avg...");
-            }
+            await HandleResults(updateResults, ctx, log);
         }
 
-        private static bool IsLatestUpdateCorrupted(PMDataOutput[] updateResults, DateTime currentDate)
+        private static async Task HandleResults(PMDataOutput[] results,
+                                                DurableOrchestrationContext ctx,
+                                                ILogger log)
         {
-            return (updateResults.Any(o => !o.LastUpdateDt.HasValue)
-                    || updateResults.Any(o => currentDate.Subtract(o.LastUpdateDt.Value)
-                                                     .TotalHours >= 2.0)
-                    || updateResults.Any(o => o.LastUpdateValue == double.NaN
-                                          || o.AvgValue == double.NaN));
+            var checkTasks = new List<Task<string>>();
+            foreach (var res in results)
+            {
+                checkTasks.Add(ctx.CallActivityAsync<string>("CheckPMDataOutput", res));
+            }
+
+            var checkResults = await Task.WhenAll(checkTasks);
+
+            var sendTasks = new List<Task>();
+            foreach (var cr in checkResults)
+            {
+                if (!string.IsNullOrEmpty(cr))
+                {
+                    sendTasks.Add(ctx.CallActivityAsync("SendWarning", cr));
+                }
+            }
+
+            if (sendTasks.Any())
+            {
+                await Task.WhenAll(sendTasks);
+            }
         }
     }
 }

@@ -19,10 +19,10 @@ namespace TestGiosFuncApp.Models
 
     public class PMDataOutput
     {
+        public string Name { get; set; }
         public DateTime? LastUpdateDt { get; set; }
-
         public double LastUpdateValue { get; set; }
-
         public double AvgValue { get; set; }
+
     }
 }
