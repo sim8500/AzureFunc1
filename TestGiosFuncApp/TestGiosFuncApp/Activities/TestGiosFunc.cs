@@ -185,9 +185,10 @@ namespace TestGiosFuncApp.Activities
         {
             var currentDate = DateTime.UtcNow;
             var threshold = Double.Parse(Environment.GetEnvironmentVariable("UpdateDelayThresholdMinutes"));
+
             return (!updateResult.LastUpdateDt.HasValue
                     || currentDate.Subtract(updateResult.LastUpdateDt.Value)
-                                                     .TotalHours >= threshold
+                                  .TotalMinutes >= threshold
                     || updateResult.LastUpdateValue == double.NaN                                      
                     || updateResult.AvgValue == double.NaN);
         }
