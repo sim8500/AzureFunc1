@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using TestGiosFuncApp.Models;
 
@@ -40,18 +41,19 @@ namespace TestGiosFuncApp.Orchestrators
             var checkResults = await Task.WhenAll(checkTasks);
 
             var sendTasks = new List<Task>();
-            foreach (var cr in checkResults)
+            if(checkResults.Any(c => !string.IsNullOrEmpty(c)))
             {
-                if (!string.IsNullOrEmpty(cr))
+                var strBuilder = new StringBuilder();
+                strBuilder.AppendLine("Warnings:");
+
+                foreach (var cr in checkResults.Where(c => !string.IsNullOrEmpty(c)))
                 {
-                    sendTasks.Add(ctx.CallActivityAsync("SendWarning", cr));
+                    strBuilder.AppendLine(cr);
                 }
+
+                await ctx.CallActivityAsync("SendWarning", strBuilder.ToString());
             }
 
-            if (sendTasks.Any())
-            {
-                await Task.WhenAll(sendTasks);
-            }
         }
     }
 }
