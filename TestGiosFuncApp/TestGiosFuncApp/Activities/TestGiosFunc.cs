@@ -3,14 +3,17 @@ using System.Net.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
 using Newtonsoft.Json;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Queue;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.File;
+using Microsoft.Azure.Storage.Queue;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using TestGiosFuncApp.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.Services.AppAuthentication;
+using Microsoft.Azure.Storage.Auth;
 
 namespace TestGiosFuncApp.Activities
 {
@@ -65,7 +68,13 @@ namespace TestGiosFuncApp.Activities
         [FunctionName("SendWarning")]
         public static async Task SendWarning([ActivityTrigger] string warningText, ILogger log)
         {
-            var storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("StorageConnectionString"));
+            AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
+            var token = await GetTokenAsync(Environment.GetEnvironmentVariable("QueueResId"));
+            TokenCredential tokenCredential = new TokenCredential(token);
+
+            StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
+
+            var storageAccount = new CloudStorageAccount(storageCredentials, true);
             var queueClient = storageAccount.CreateCloudQueueClient();
             var queueRef = queueClient.GetQueueReference("tst-queue");
 
@@ -125,7 +134,12 @@ namespace TestGiosFuncApp.Activities
 
         private static async Task MergeGiosDataWithFileStorage(PMDataSource giosDataSource, string storageFile, ILogger log)
         {
-            var storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("StorageConnectionString"));
+            AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
+            var token = await GetTokenAsync(Environment.GetEnvironmentVariable("FileStorageResId"));
+            TokenCredential tokenCredential = new TokenCredential(token);
+
+            StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
+            var storageAccount = new CloudStorageAccount(storageCredentials, true);
 
             var fileClient = storageAccount.CreateCloudFileClient();
             var share = fileClient.GetShareReference(Environment.GetEnvironmentVariable("AzureShare"));
@@ -181,6 +195,13 @@ namespace TestGiosFuncApp.Activities
             }
         }
 
+        private static async Task<string> GetTokenAsync(string resId)
+        {
+            AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
+            var authResult = await azureServiceTokenProvider.GetAuthenticationResultAsync(resId);
+
+            return authResult.AccessToken;
+        }
         private static bool IsLatestUpdateCorrupted(PMDataOutput updateResult)
         {
             var currentDate = DateTime.UtcNow;
