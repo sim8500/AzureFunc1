@@ -74,7 +74,12 @@ namespace TestGiosFuncApp.Activities
 
             StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
 
-            var storageAccount = new CloudStorageAccount(storageCredentials, true);
+            var storageAccount = new CloudStorageAccount(storageCredentials,
+                                             new Uri("https://giosplotlystorage.blob.core.windows.net/"),
+                                             new Uri("https://giosplotlystorage.queue.core.windows.net/"),
+                                             new Uri("https://giosplotlystorage.table.core.windows.net/"),
+                                             new Uri("https://giosplotlystorage.file.core.windows.net/")
+                                             );
             var queueClient = storageAccount.CreateCloudQueueClient();
             var queueRef = queueClient.GetQueueReference("tst-queue");
 
@@ -139,7 +144,12 @@ namespace TestGiosFuncApp.Activities
             TokenCredential tokenCredential = new TokenCredential(token);
 
             StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
-            var storageAccount = new CloudStorageAccount(storageCredentials, true);
+            var storageAccount = new CloudStorageAccount(storageCredentials,
+                                                         new Uri("https://giosplotlystorage.blob.core.windows.net/"),
+                                                         new Uri("https://giosplotlystorage.queue.core.windows.net/"),
+                                                         new Uri("https://giosplotlystorage.table.core.windows.net/"),
+                                                         new Uri("https://giosplotlystorage.file.core.windows.net/")
+                                                         );
 
             var fileClient = storageAccount.CreateCloudFileClient();
             var share = fileClient.GetShareReference(Environment.GetEnvironmentVariable("AzureShare"));
