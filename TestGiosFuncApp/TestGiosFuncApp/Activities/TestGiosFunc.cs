@@ -132,12 +132,17 @@ namespace TestGiosFuncApp.Activities
 
         private static async Task MergeGiosDataWithFileStorage(PMDataSource giosDataSource, string storageFile, ILogger log)
         {
+            log.LogInformation("Before GetTokenAsync()...");
             AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
             var token = await GetTokenAsync("https://storage.azure.com/");
             TokenCredential tokenCredential = new TokenCredential(token);
 
+            log.LogInformation($"Token acquired and is not null: {!string.IsNullOrEmpty(token)}");
+
             StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
             var fileClient = new CloudFileClient(new Uri("https://giosplotlystorage.file.core.windows.net/"), storageCredentials);
+            log.LogInformation($"FileClient created");
+
             var share = fileClient.GetShareReference(Environment.GetEnvironmentVariable("AzureShare"));
             try
             {
