@@ -71,6 +71,7 @@ namespace TestGiosFuncApp.Activities
             AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
             var token = await GetTokenAsync("https://storage.azure.com/");
             TokenCredential tokenCredential = new TokenCredential(token);
+            log.LogInformation($"Token acquired and is not null: {!string.IsNullOrEmpty(token)}");
 
             StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
             var queueClient = new CloudQueueClient(new Uri("https://giosplotlystorage.queue.core.windows.net/"), storageCredentials);
@@ -132,16 +133,8 @@ namespace TestGiosFuncApp.Activities
 
         private static async Task MergeGiosDataWithFileStorage(PMDataSource giosDataSource, string storageFile, ILogger log)
         {
-            log.LogInformation("Before GetTokenAsync()...");
-            AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
-            var token = await GetTokenAsync("https://storage.azure.com/");
-            TokenCredential tokenCredential = new TokenCredential(token);
-
-            log.LogInformation($"Token acquired and is not null: {!string.IsNullOrEmpty(token)}");
-
-            StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
-            var fileClient = new CloudFileClient(new Uri("https://giosplotlystorage.file.core.windows.net/"), storageCredentials);
-            log.LogInformation($"FileClient created");
+            var storageAccount = CloudStorageAccount.Parse(Environment.GetEnvironmentVariable("StorageConnectionString"));
+            var fileClient = storageAccount.CreateCloudFileClient();
 
             var share = fileClient.GetShareReference(Environment.GetEnvironmentVariable("AzureShare"));
             try
