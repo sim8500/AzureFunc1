@@ -194,9 +194,7 @@ namespace TestGiosFuncApp.Activities
         private static async Task<string> GetTokenAsync(string resId)
         {
             AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
-            var authResult = await azureServiceTokenProvider.GetAuthenticationResultAsync(resId);
-
-            return authResult.AccessToken;
+            return await azureServiceTokenProvider.GetAccessTokenAsync(resId);
         }
         private static bool IsLatestUpdateCorrupted(PMDataOutput updateResult)
         {
