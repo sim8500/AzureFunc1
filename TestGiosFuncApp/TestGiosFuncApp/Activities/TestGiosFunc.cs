@@ -69,18 +69,11 @@ namespace TestGiosFuncApp.Activities
         public static async Task SendWarning([ActivityTrigger] string warningText, ILogger log)
         {
             AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
-            var token = await GetTokenAsync(Environment.GetEnvironmentVariable("QueueResId"));
+            var token = await GetTokenAsync("https://storage.azure.com/");
             TokenCredential tokenCredential = new TokenCredential(token);
 
             StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
-
-            var storageAccount = new CloudStorageAccount(storageCredentials,
-                                             new Uri("https://giosplotlystorage.blob.core.windows.net/"),
-                                             new Uri("https://giosplotlystorage.queue.core.windows.net/"),
-                                             new Uri("https://giosplotlystorage.table.core.windows.net/"),
-                                             new Uri("https://giosplotlystorage.file.core.windows.net/")
-                                             );
-            var queueClient = storageAccount.CreateCloudQueueClient();
+            var queueClient = new CloudQueueClient(new Uri("https://giosplotlystorage.queue.core.windows.net/"), storageCredentials);
             var queueRef = queueClient.GetQueueReference("tst-queue");
 
             await queueRef.AddMessageAsync(new CloudQueueMessage(warningText));
@@ -140,18 +133,11 @@ namespace TestGiosFuncApp.Activities
         private static async Task MergeGiosDataWithFileStorage(PMDataSource giosDataSource, string storageFile, ILogger log)
         {
             AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
-            var token = await GetTokenAsync(Environment.GetEnvironmentVariable("FileStorageResId"));
+            var token = await GetTokenAsync("https://storage.azure.com/");
             TokenCredential tokenCredential = new TokenCredential(token);
 
             StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
-            var storageAccount = new CloudStorageAccount(storageCredentials,
-                                                         new Uri("https://giosplotlystorage.blob.core.windows.net/"),
-                                                         new Uri("https://giosplotlystorage.queue.core.windows.net/"),
-                                                         new Uri("https://giosplotlystorage.table.core.windows.net/"),
-                                                         new Uri("https://giosplotlystorage.file.core.windows.net/")
-                                                         );
-
-            var fileClient = storageAccount.CreateCloudFileClient();
+            var fileClient = new CloudFileClient(new Uri("https://giosplotlystorage.file.core.windows.net/"), storageCredentials);
             var share = fileClient.GetShareReference(Environment.GetEnvironmentVariable("AzureShare"));
             try
             {
