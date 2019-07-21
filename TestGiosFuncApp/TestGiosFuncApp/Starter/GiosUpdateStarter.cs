@@ -11,7 +11,7 @@ namespace TestGiosFuncApp.Starter
     public static class GiosUpdateStarter
     {
         [FunctionName("GiosUpdateStarter")]
-        public static async Task Run([TimerTrigger("* 15 * * * *")]TimerInfo myTimer,
+        public static async Task Run([TimerTrigger("1 15 * * * *")]TimerInfo myTimer,
                                     [OrchestrationClient] DurableOrchestrationClient starter,
                                     ILogger log)
         {
