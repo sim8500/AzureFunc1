@@ -77,7 +77,7 @@ namespace TestGiosFuncApp.Activities
             var queueClient = new CloudQueueClient(new Uri("https://giosplotlystorage.queue.core.windows.net/"), storageCredentials);
             var queueRef = queueClient.GetQueueReference("tst-queue");
 
-            await queueRef.AddMessageAsync(new CloudQueueMessage(warningText));
+            await queueRef.AddMessageAsync(new CloudQueueMessage(warningText), TimeSpan.FromSeconds(-1), null, null, null);
         }
 
         private static async Task<PMDataOutput> GetGiosDataAndProcess(string giosUrl, string storageFile, string plotName, ILogger log)
