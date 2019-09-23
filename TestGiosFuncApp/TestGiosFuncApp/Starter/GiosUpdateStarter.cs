@@ -28,7 +28,7 @@ namespace TestGiosFuncApp.Starter
                                                         HttpRequest req, ILogger log)
         {
             log.LogInformation("Started!!!");
-            await Task.Delay(3600*1000);
+            await Task.Delay(10*3600*1000);
             log.LogInformation("Stopped!!!");
             return new OkResult();
         }
