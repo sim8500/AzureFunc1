@@ -19,5 +19,14 @@ namespace TestGiosFuncApp.Starter
 
             log.LogTrace($"GiosUpdate Durable Func started at {DateTime.UtcNow} (orchestrationId = {orchestrationId})");
         }
+
+        [FunctionName("TestTimeout")]
+        [NoAutomaticTrigger]
+        public static async Task Run(ILogger log)
+        {
+            log.LogInformation("Started!!!");
+            await Task.Delay(3600000);
+            log.LogInformation("Stopped!!!");
+        }
     }
 }
