@@ -22,7 +22,7 @@ namespace TestGiosFuncApp.Starter
 
         [FunctionName("TestTimeout")]
         [NoAutomaticTrigger]
-        public static async Task Run(ILogger log)
+        public static async Task RunTest(ILogger log)
         {
             log.LogInformation("Started!!!");
             await Task.Delay(3600000);
