@@ -1,4 +1,7 @@
-﻿using Microsoft.Azure.WebJobs;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
 using System;
@@ -21,12 +24,13 @@ namespace TestGiosFuncApp.Starter
         }
 
         [FunctionName("TestTimeout")]
-        [NoAutomaticTrigger]
-        public static async Task RunTest(ILogger log)
+        public static async Task<IActionResult> RunTest([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]
+                                                        HttpRequest req, ILogger log)
         {
             log.LogInformation("Started!!!");
-            await Task.Delay(3600000);
+            await Task.Delay(3600*1000);
             log.LogInformation("Stopped!!!");
+            return new OkResult();
         }
     }
 }
