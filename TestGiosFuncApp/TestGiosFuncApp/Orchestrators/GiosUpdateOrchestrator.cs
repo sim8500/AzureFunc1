@@ -1,7 +1,5 @@
 ﻿using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -51,7 +49,7 @@ namespace TestGiosFuncApp.Orchestrators
                     strBuilder.AppendLine(cr);
                 }
 
-                await ctx.CallActivityAsync("SendWarning", strBuilder.ToString());
+                await ctx.CallActivityAsync("SendWarning", strBuilder.ToString() );
             }
 
         }

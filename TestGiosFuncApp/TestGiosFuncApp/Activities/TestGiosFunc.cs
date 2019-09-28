@@ -1,19 +1,19 @@
-using System;
-using System.Net.Http;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Host;
-using Newtonsoft.Json;
+using Microsoft.Azure.Services.AppAuthentication;
 using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Auth;
 using Microsoft.Azure.Storage.File;
 using Microsoft.Azure.Storage.Queue;
-using System.Threading.Tasks;
+using Microsoft.Azure.WebJobs;
+using Microsoft.Extensions.Logging;
+using Microsoft.WindowsAzure.Storage.Table;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 using TestGiosFuncApp.Models;
-using Microsoft.Extensions.Logging;
-using Microsoft.Azure.Services.AppAuthentication;
-using Microsoft.Azure.Storage.Auth;
 
 namespace TestGiosFuncApp.Activities
 {
@@ -66,16 +66,18 @@ namespace TestGiosFuncApp.Activities
         }
 
         [FunctionName("SendWarning")]
-        public static async Task SendWarning([ActivityTrigger] string warningText, ILogger log)
+        public static async Task SendWarning([ActivityTrigger] string warningText, [Table("GiosWarningEntriesTable")] CloudTable warningsTable, ILogger log)
         {
-            AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
-            var token = await GetTokenAsync("https://storage.azure.com/");
-            TokenCredential tokenCredential = new TokenCredential(token);
-            log.LogInformation($"Token acquired and is not null: {!string.IsNullOrEmpty(token)}");
+            var dt = DateTime.Now;
+            var entity = new WarningEntity(dt.ToShortDateString(), dt.ToShortTimeString());
+            entity.Text = warningText;
+            await warningsTable.ExecuteAsync(TableOperation.InsertOrReplace(entity));
+        }
 
-            StorageCredentials storageCredentials = new StorageCredentials(tokenCredential);
+        private static async Task SendWarningToStorageQueue(StorageCredentials storageCredentials, string queueName, string warningText, ILogger log)
+        {
             var queueClient = new CloudQueueClient(new Uri("https://giosplotlystorage.queue.core.windows.net/"), storageCredentials);
-            var queueRef = queueClient.GetQueueReference("tst-queue");
+            var queueRef = queueClient.GetQueueReference(queueName);
 
             await queueRef.AddMessageAsync(new CloudQueueMessage(warningText), TimeSpan.FromSeconds(-1), null, null, null);
         }
