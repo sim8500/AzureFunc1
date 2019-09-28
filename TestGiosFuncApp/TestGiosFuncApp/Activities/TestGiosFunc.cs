@@ -69,8 +69,10 @@ namespace TestGiosFuncApp.Activities
         public static async Task SendWarning([ActivityTrigger] string warningText, [Table("GiosWarningEntriesTable")] CloudTable warningsTable, ILogger log)
         {
             var dt = DateTime.Now;
-            var entity = new WarningEntity(dt.ToShortDateString(), dt.ToShortTimeString());
-            entity.Text = warningText;
+            var entity = new WarningEntity(dt.ToString("dd-MM-yyyy"), dt.ToString("HH-mm-ss"))
+            {
+                Text = warningText
+            };
             await warningsTable.ExecuteAsync(TableOperation.InsertOrReplace(entity));
         }
 
