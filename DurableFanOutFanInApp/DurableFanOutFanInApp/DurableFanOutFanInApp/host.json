@@ -1,3 +1,10 @@
 {
-    "version": "2.0"
+  "version": "2.0",
+  "logging": {
+    "logLevel": {
+      "DurableFanOutFanInApp.Activity": "Information",
+      "DurableFanOutFanInApp.Starter": "Information",
+      "DurableFanOutFanInApp.Orchestrator": "Information"
+    }
+  }
 }

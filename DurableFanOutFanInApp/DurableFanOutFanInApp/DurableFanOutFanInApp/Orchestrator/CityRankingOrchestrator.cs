@@ -1,6 +1,8 @@
-﻿using Microsoft.Azure.WebJobs;
+﻿using DurableFanOutFanInApp.Models;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,28 +28,23 @@ namespace DurableFanOutFanInApp.Orchestrator
 
             var codes = Environment.GetEnvironmentVariable("CitySensorCodes").Split(',');
 
-            var tasks = codes.Select(c => context.CallActivityAsync<Tuple<string, float>>("GetAvgPMLevel", c));
+            var tasks = codes.Select(c => context.CallActivityAsync<RankingResult>("GetAvgPMLevel", c));
 
             var results = (await Task.WhenAll(tasks)).Where(r => r != null);
 
             if(results.Any())
             {
-                var maxAvg = -1.0f;
-                var maxEntry = results.First();
+                var maxEntry = new RankingResult { PMLevel = -1.0f };
 
                 foreach (var r in results)
                 {
-                    if(r.Item2 > maxAvg)
+                    if(r.PMLevel> maxEntry.PMLevel)
                     {
-                        maxAvg = r.Item2;
                         maxEntry = r;
                     }
                 }
 
-                if (!context.IsReplaying)
-                {
-                    logger.LogInformation($"City with the highest PM avg. level is {maxEntry.Item1}");
-                }
+                await context.CallActivityAsync("SendRankingResult", JsonConvert.SerializeObject(maxEntry));
             }
             else
             {

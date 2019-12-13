@@ -1,4 +1,5 @@
 ﻿using DurableFanOutFanInApp.Interfaces;
+using DurableFanOutFanInApp.Models;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -20,24 +21,23 @@ namespace DurableFanOutFanInApp.Activity
         }
 
         [FunctionName("GetAvgPMLevel")]
-        public async Task<Tuple<string,float>> Run([ActivityTrigger]string trigger)
+        public async Task<RankingResult> Run([ActivityTrigger]string trigger)
         {
             var args = trigger.Split('=');
             if(args.Length == 2)
-            {
-                
+            {            
                 logger.LogInformation($"Running AvgPMLevel calculation for city={args[0]}, sensorId={args[1]}...");
                 var result = await giosApiClient.GetDataForSensorAsync(args[1]);
                 if (result != null)
                 {
-                    var avgLevel = CalculateAvgLevel(result.Values);
+                    var avgLevel = CalculateAvgLevel(result.Values.Take(12));
                     logger.LogInformation($"Got AvgPMLevel for city={args[0]}: {avgLevel}.");
-                    return Tuple.Create(args[0], avgLevel);
+                    return new RankingResult { City = args[0], PMLevel = avgLevel };
                 }
 
                 logger.LogWarning($"No data for AvgPMLevel calculation for city={args[0]}");
 
-                return Tuple.Create(args[0],-1.0f);
+                return new RankingResult { City = args[0], PMLevel = -1.0f };
             }
             else
             {
@@ -61,6 +61,18 @@ namespace DurableFanOutFanInApp.Activity
                                                 }
                                             },
                                             (ac) => ac.Item2 > 0 ? (ac.Item1 / ac.Item2) : -1.0f);
+        }
+
+        [FunctionName("SendRankingResult")]
+        [return: Queue("ranking-results", Connection = "AzureWebJobsStorage")]
+        public string SendResult([ActivityTrigger]string trigger)
+        {
+            if(!string.IsNullOrWhiteSpace(trigger))
+            {
+                return trigger;
+            }
+
+            throw new ArgumentNullException(nameof(trigger));
         }
 
         private readonly ILogger logger;
